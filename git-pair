@@ -8,6 +8,10 @@
 # 
 # Orginal Author: Bryan Helmkamp (http://brynary.com)
 
+#
+# Modified by Greg Jastrab to only update settings in project dir
+#
+
 #######################################################################
 
 require 'yaml'
@@ -51,7 +55,9 @@ end
 ## End of configuration
 #######################################################################
 
+cur_dir = Dir.pwd
 config = get_pairs_config
+Dir.chdir cur_dir # change back to initial dir in case get_pairs_config had to walk up to find .pairs
 authors = ARGV.map do |initials|
   if full_name = config['pairs'][initials.downcase]
     full_name
@@ -84,11 +90,20 @@ if authors.any?
       config['email']
     end
 
-  system("git", "config", "--global", "user.name", "#{authors}")
-  system("git", "config", "--global", "user.email", "#{email}")
+  system("git", "config", "user.name", "#{authors}")
+  system("git", "config", "user.email", "#{email}")
 else
-  `git config --global --unset user.name`
-  `git config --global --unset user.email`
-  puts "Unset user.name and user.email"
+  # get global set
+  global_name  = %x{git config --global user.name}
+  global_email  = %x{git config --global user.email}
+  if global_name.empty? || global_email.empty?
+    `git config --unset user.name`
+    `git config --unset user.email`
+    puts "Unset user.name and user.email"
+  else
+    system("git", "config", "user.name", "#{global_name}")
+    system("git", "config", "user.email", "#{global_email}")
+    puts "Reverting back to global user.name and user.email"
+  end
 end
-puts `git config --global -l | grep user | tail -2`
+puts `git config -l | grep user | tail -2`
